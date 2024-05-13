@@ -112,6 +112,7 @@ class MultiModalityCausalLM(MultiModalityPreTrainedModel):
         super().__init__(config)
 
         vision_config = config.vision_config
+        print("Using vision model:", vision_config.cls)
         vision_cls = model_name_to_cls(vision_config.cls)
         self.vision_model = vision_cls(**vision_config.params)
 
