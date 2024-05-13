@@ -109,12 +109,12 @@ def trunc_normal_(tensor, mean=0.0, std=1.0, a=-2.0, b=2.0):
         >>> nn.init.trunc_normal_(w)
     """
 
-    # with torch.no_grad():
-    dtype = tensor.dtype
-    tensor_fp32 = tensor.float()
-    tensor_fp32 = _no_grad_trunc_normal_(tensor_fp32, mean, std, a, b)
-    tensor_dtype = tensor_fp32.to(dtype=dtype)
-    tensor.copy_(tensor_dtype)
+    with torch.no_grad():
+        dtype = tensor.dtype
+        tensor_fp32 = tensor.float()
+        tensor_fp32 = _no_grad_trunc_normal_(tensor_fp32, mean, std, a, b)
+        tensor_dtype = tensor_fp32.to(dtype=dtype)
+        tensor.copy_(tensor_dtype)
 
 
 def init_weights(self):
