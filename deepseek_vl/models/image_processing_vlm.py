@@ -98,6 +98,7 @@ class VLMImageProcessor(BaseImageProcessor):
         self.image_std = image_std
         self.min_size = min_size
         self.do_normalize = do_normalize
+        self.default_shape = [3, self.image_size, self.image_size]
 
 
         self.background_color = tuple([1 for x in image_mean])
@@ -158,9 +159,9 @@ class VLMImageProcessor(BaseImageProcessor):
 
         return image
     
-    @property
-    def default_shape(self):
-        return [3, self.image_size, self.image_size]
+    # @property
+    # def default_shape(self):
+    #     return [3, self.image_size, self.image_size]
     
 AutoImageProcessor.register(VLMImageProcessorConfig, VLMImageProcessor)
     
