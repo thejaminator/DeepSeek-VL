@@ -233,7 +233,7 @@ class VLChatProcessor(ProcessorMixin):
         self,
         prompt: str = None,
         conversations: List[Dict[str, str]] = None,
-        images: torch.Tensor | None,
+        images: torch.Tensor | None = None,
         **kwargs,
     ):
         """

@@ -140,6 +140,7 @@ class VLMImageProcessor(BaseImageProcessor):
         """
         Args:
             image (torch.Tensor): Image tensor to be preprocessed, expected to be in [3, H, W] format
+            Scale [0, 1]
 
         Returns:
             torch.Tensor: Preprocessed image tensor
@@ -150,8 +151,8 @@ class VLMImageProcessor(BaseImageProcessor):
         # Resize and pad to [self.image_size, self.image_size]
         image = self.resize(image)
 
-        # Rescale from [0, 255] -> [0, 1]
-        image = image * self.rescale_factor
+        # # Rescale from [0, 255] -> [0, 1]
+        # image = image * self.rescale_factor
 
         # Normalize
         if self.do_normalize:
@@ -169,7 +170,7 @@ if __name__ == "__main__":
     )
     fake_image = Image.new("RGB", (1024, 1024), (1, 100, 200))
     # convert fake_image to torch.Tenso
-    torch_image = torchvision.transforms.functional.to_tensor(fake_image) * 255
+    torch_image = torchvision.transforms.functional.to_tensor(fake_image)
     resized = image_processor.resize(torch_image)
     # print(resized)
     processed = image_processor.preprocess_one(torch_image)
