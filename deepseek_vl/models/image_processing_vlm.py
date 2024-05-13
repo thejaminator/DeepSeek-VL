@@ -99,10 +99,8 @@ class VLMImageProcessor(BaseImageProcessor):
         self.min_size = min_size
         self.do_normalize = do_normalize
 
-        if image_mean is None:
-            self.background_color = (127, 127, 127)
-        else:
-            self.background_color = tuple([int(x * 255) for x in image_mean])
+
+        self.background_color = tuple([1 for x in image_mean])
 
     def resize(self, img: torch.Tensor) -> torch.Tensor:
         """
@@ -159,6 +157,12 @@ class VLMImageProcessor(BaseImageProcessor):
             image = (image - torch.tensor(self.image_mean, dtype=image.dtype).view(3, 1, 1)) / torch.tensor(self.image_std, dtype=image.dtype).view(3, 1, 1)
 
         return image
+    
+    @property
+    def default_shape(self):
+        return [3, self.image_size, self.image_size]
+    
+AutoImageProcessor.register(VLMImageProcessorConfig, VLMImageProcessor)
     
 if __name__ == "__main__":
     from PIL import Image
