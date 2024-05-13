@@ -93,7 +93,7 @@ class VLChatProcessor(ProcessorMixin):
         ignore_id: int = -100,
         **kwargs,
     ):
-        self.image_processor = image_processor
+        self.image_processor: VLMImageProcessor = image_processor
         self.tokenizer = tokenizer
 
         image_id = self.tokenizer.vocab.get(image_tag)
