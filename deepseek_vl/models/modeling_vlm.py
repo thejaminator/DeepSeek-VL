@@ -151,6 +151,8 @@ class MultiModalityCausalLM(MultiModalityPreTrainedModel):
         print(f"images.requires_grad: {images.requires_grad=}")
         # [b x n, T2, D]
         images_embeds = self.aligner(self.vision_model(images))
+        # print requires_grad
+        print(f"1. images_embeds.requires_grad: {images_embeds.requires_grad=}")
 
         # [b x n, T2, D] -> [b, n x T2, D]
         images_embeds = rearrange(images_embeds, "(b n) t d -> b (n t) d", b=bs, n=n)
