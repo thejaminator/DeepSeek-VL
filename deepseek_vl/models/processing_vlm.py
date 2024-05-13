@@ -18,7 +18,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import torch
 from PIL.Image import Image
@@ -233,7 +233,7 @@ class VLChatProcessor(ProcessorMixin):
         self,
         prompt: str = None,
         conversations: List[Dict[str, str]] = None,
-        images: List[Image] = None,
+        images: torch.Tensor | None,
         **kwargs,
     ):
         """
@@ -279,8 +279,10 @@ class VLChatProcessor(ProcessorMixin):
             input_ids=input_ids,
         )
 
+        assert images is not None, "images cannot be None."
+
         # load images
-        images_outputs = self.image_processor(images, return_tensors="pt")
+        images_outputs = self.image_processor.preprocess_one(images[0], return_tensors="pt")
 
         prepare = VLChatProcessorOutput(
             sft_format=sft_format,
@@ -296,7 +298,7 @@ class VLChatProcessor(ProcessorMixin):
         *,
         prompt: str = None,
         conversations: List[Dict[str, str]] = None,
-        images: List[Image] = None,
+        images: torch.Tensor | None  = None,
         force_batchify: bool = True,
         **kwargs,
     ):

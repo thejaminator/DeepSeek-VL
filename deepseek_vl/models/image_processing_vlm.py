@@ -1,29 +1,9 @@
-# Copyright (c) 2023-2024 DeepSeek.
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy of
-# this software and associated documentation files (the "Software"), to deal in
-# the Software without restriction, including without limitation the rights to
-# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-# the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 from typing import List, Tuple, Union
 
 import numpy as np
 import torch
 import torchvision
 import torchvision.transforms.functional
-from PIL import Image
 from transformers import AutoImageProcessor, PretrainedConfig
 from transformers.image_processing_utils import BaseImageProcessor, BatchFeature
 from transformers.image_utils import to_numpy_array
@@ -31,24 +11,24 @@ from transformers.utils import logging
 
 logger = logging.get_logger(__name__)
 
-ImageType = Union[np.ndarray, torch.Tensor, Image.Image]
+ImageType = Union[np.ndarray, torch.Tensor]
 IMAGENET_MEAN = (0.48145466, 0.4578275, 0.40821073)
 IMAGENET_STD = (0.26862954, 0.26130258, 0.27577711)
 IMAGENET_INCEPTION_MEAN = (0.5, 0.5, 0.5)
 IMAGENET_INCEPTION_STD = (0.5, 0.5, 0.5)
 
 
-def expand2square(pil_img, background_color):
-    width, height = pil_img.size
+def expand2square(img: torch.Tensor, background_color):
+    _, height, width = img.shape
     if width == height:
-        return pil_img
+        return img
     elif width > height:
-        result = Image.new(pil_img.mode, (width, width), background_color)
-        result.paste(pil_img, (0, (width - height) // 2))
+        result = torch.full((3, width, width), background_color, dtype=img.dtype)
+        result[:, :, (width - height) // 2 : (width + height) // 2] = img
         return result
     else:
-        result = Image.new(pil_img.mode, (height, height), background_color)
-        result.paste(pil_img, ((height - width) // 2, 0))
+        result = torch.full((3, height, height), background_color, dtype=img.dtype)
+        result[:, (height - width) // 2 : (height + width) // 2, :] = img
         return result
 
 
@@ -124,17 +104,16 @@ class VLMImageProcessor(BaseImageProcessor):
         else:
             self.background_color = tuple([int(x * 255) for x in image_mean])
 
-    def resize(self, pil_img: Image) -> np.ndarray:
+    def resize(self, img: torch.Tensor) -> torch.Tensor:
         """
-
         Args:
-            pil_img (PIL.Image): [H, W, 3] in PIL.Image in RGB
+            img (torch.Tensor): [3, H, W] in RGB
 
         Returns:
-            x (np.ndarray): [3, self.image_size, self.image_size]
+            x (torch.Tensor): [3, self.image_size, self.image_size]
         """
 
-        width, height = pil_img.size
+        _, height, width = img.shape
         max_size = max(width, height)
 
         size = [
@@ -143,66 +122,56 @@ class VLMImageProcessor(BaseImageProcessor):
         ]
 
         if width <= 0 or height <= 0 or size[0] <= 0 or size[1] <= 0:
-            print(f"orig size = {pil_img.size}, new size = {size}")
+            print(f"orig size = {img.shape}, new size = {size}")
             raise ValueError("Invalid size!")
 
-        pil_img = torchvision.transforms.functional.resize(
-            pil_img,
+        x = torchvision.transforms.functional.resize(
+            img,
             size,
             interpolation=torchvision.transforms.functional.InterpolationMode.BICUBIC,
             antialias=True,
         )
 
-        pil_img = expand2square(pil_img, self.background_color)
-        x = to_numpy_array(pil_img)
-
-        # [H, W, 3] -> [3, H, W]
-        x = np.transpose(x, (2, 0, 1))
+        x = expand2square(x, self.background_color)
 
         return x
+    
+    def preprocess_one(self, image: torch.Tensor, **kwargs) -> torch.Tensor:
+        """
+        Args:
+            image (torch.Tensor): Image tensor to be preprocessed, expected to be in [3, H, W] format
 
-    def preprocess(self, images, return_tensors: str = "pt", **kwargs) -> BatchFeature:
-        # resize and pad to [self.image_size, self.image_size]
-        # then convert from [H, W, 3] to [3, H, W]
-        images: List[np.ndarray] = [self.resize(image) for image in images]
+        Returns:
+            torch.Tensor: Preprocessed image tensor
+        """
+        assert isinstance(image, torch.Tensor), f"Input must be a PyTorch tensor, got {type(image)}"
+        assert image.ndim == 3 and image.shape[0] == 3, "Input tensor should have shape [3, H, W]"
 
-        # resacle from [0, 255] -> [0, 1]
-        images = [
-            self.rescale(
-                image=image,
-                scale=self.rescale_factor,
-                input_data_format="channels_first",
-            )
-            for image in images
-        ]
+        # Resize and pad to [self.image_size, self.image_size]
+        image = self.resize(image)
 
-        # normalize
+        # Rescale from [0, 255] -> [0, 1]
+        image = image * self.rescale_factor
+
+        # Normalize
         if self.do_normalize:
-            images = [
-                self.normalize(
-                    image=image,
-                    mean=self.image_mean,
-                    std=self.image_std,
-                    input_data_format="channels_first",
-                )
-                for image in images
-            ]
+            image = (image - torch.tensor(self.image_mean, dtype=image.dtype).view(3, 1, 1)) / torch.tensor(self.image_std, dtype=image.dtype).view(3, 1, 1)
 
-        data = {"pixel_values": images}
-        return BatchFeature(data=data, tensor_type=return_tensors)
-
-    @property
-    def default_shape(self):
-        return [3, self.image_size, self.image_size]
-
-
-AutoImageProcessor.register(VLMImageProcessorConfig, VLMImageProcessor)
-
-
+        return image
+    
 if __name__ == "__main__":
+    from PIL import Image
     image_processor = VLMImageProcessor(
         image_size=1024,
         image_mean=IMAGENET_INCEPTION_MEAN,
         image_std=IMAGENET_INCEPTION_STD,
         do_normalize=True,
     )
+    fake_image = Image.new("RGB", (1024, 1024), (1, 100, 200))
+    # convert fake_image to torch.Tenso
+    torch_image = torchvision.transforms.functional.to_tensor(fake_image) * 255
+    resized = image_processor.resize(torch_image)
+    # print(resized)
+    processed = image_processor.preprocess_one(torch_image)
+    print(processed)
+    
