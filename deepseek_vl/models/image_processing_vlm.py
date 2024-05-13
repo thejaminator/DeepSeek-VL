@@ -1,3 +1,4 @@
+from platform import processor
 from typing import List, Tuple, Union
 
 import numpy as np
@@ -180,4 +181,5 @@ if __name__ == "__main__":
     # print(resized)
     processed = image_processor.preprocess_one(torch_image)
     print(processed)
+    print(image_processor.default_shape)
     

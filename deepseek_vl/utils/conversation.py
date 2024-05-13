@@ -85,7 +85,7 @@ class Conversation:
                 ret = system_prompt + seps[0]
             for i, (role, message) in enumerate(self.messages):
                 if message:
-                    ret += role + ": " + message + seps[i % 2]
+                    ret += role + ":" + message + seps[i % 2]
                 else:
                     ret += role + ":"
             return ret
