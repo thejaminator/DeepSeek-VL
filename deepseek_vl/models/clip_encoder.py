@@ -143,22 +143,24 @@ class HybridVisionTower(nn.Module):
         self.high_layer_norm = nn.LayerNorm(high_res_cfg.get("output_dim", 1024))
         self.low_layer_norm = nn.LayerNorm(low_res_cfg.get("output_dim", 1024))
 
-        if freeze_high:
-            for p_name, p in self.vision_tower_high.named_parameters():
-                p.requires_grad = False
-            self.vision_tower_high = self.vision_tower_high.eval()
-        else:
-            # train donwsamples and neck
-            for p_name, p in self.vision_tower_high.named_parameters():
-                if "downsamples" in p_name or "neck" in p_name:
-                    p.requires_grad = True
-                else:
-                    p.requires_grad = False
+        for p_name, p in self.vision_tower_high.named_parameters():
+                p.requires_grad = True
+        # if freeze_high:
+        #     for p_name, p in self.vision_tower_high.named_parameters():
+        #         p.requires_grad = False
+        #     self.vision_tower_high = self.vision_tower_high.eval()
+        # else:
+        #     # train donwsamples and neck
+        #     for p_name, p in self.vision_tower_high.named_parameters():
+        #         if "downsamples" in p_name or "neck" in p_name:
+        #             p.requires_grad = True
+        #         else:
+        #             p.requires_grad = False
 
-        if freeze_low:
-            for p in self.vision_tower_low.parameters():
-                p.requires_grad = False
-            self.vision_tower_low = self.vision_tower_low.eval()
+        # if freeze_low:
+        #     for p in self.vision_tower_low.parameters():
+        #         p.requires_grad = False
+        #     self.vision_tower_low = self.vision_tower_low.eval()
 
         self.resize = torchvision.transforms.Resize(self.low_res_size, antialias=True)
 
