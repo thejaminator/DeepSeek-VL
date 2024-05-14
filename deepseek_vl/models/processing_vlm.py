@@ -287,7 +287,7 @@ class VLChatProcessor(ProcessorMixin):
         prepare = VLChatProcessorOutput(
             sft_format=sft_format,
             input_ids=input_ids,
-            pixel_values=images_outputs.pixel_values,
+            pixel_values=images_outputs
             num_image_tokens=num_image_tokens,
         )
 
