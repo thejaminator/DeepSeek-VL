@@ -280,6 +280,7 @@ class VLChatProcessor(ProcessorMixin):
         )
 
         assert images is not None, "images cannot be None."
+        assert images.ndim == 4, "images should be a 4D tensor (1, 3, H, W)."
 
         # load images
         images_outputs = self.image_processor.preprocess_one(images[0], return_tensors="pt")
@@ -287,7 +288,7 @@ class VLChatProcessor(ProcessorMixin):
         prepare = VLChatProcessorOutput(
             sft_format=sft_format,
             input_ids=input_ids,
-            pixel_values=images_outputs
+            pixel_values=images_outputs,
             num_image_tokens=num_image_tokens,
         )
 
